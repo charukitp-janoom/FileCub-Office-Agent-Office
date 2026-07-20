@@ -17,10 +17,11 @@ function formatBytes(bytes: number): string {
 
 interface AgentOfficeRoomProps {
   onOpenAchievements: () => void;
+  onLogout: () => void;
 }
 
 /** Top-level screen for the "🤖 Agent Office" menu (docs/agent-office/03-ui-flow.md §3.2). */
-export function AgentOfficeRoom({ onOpenAchievements }: AgentOfficeRoomProps) {
+export function AgentOfficeRoom({ onOpenAchievements, onLogout }: AgentOfficeRoomProps) {
   const { agents, loading, error, refresh } = useAgentRegistry();
   const { summary, refresh: refreshDashboard } = useDashboardSummary();
   const { count: unreadCount, refresh: refreshUnread } = useUnreadNotifications();
@@ -46,6 +47,9 @@ export function AgentOfficeRoom({ onOpenAchievements }: AgentOfficeRoomProps) {
             🏆 Achievement
           </button>
           <span className="coin">🪙 2,560</span>
+          <button type="button" className="primary-action" style={{ width: "auto", margin: 0 }} onClick={onLogout}>
+            🔒 ออกจากระบบ
+          </button>
         </div>
       </div>
 

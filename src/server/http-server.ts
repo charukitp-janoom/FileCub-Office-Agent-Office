@@ -4,6 +4,9 @@ import type { AgentCode } from "../agent-core/types";
 import type { UploadAgent } from "../agents/upload-agent/upload-agent";
 import type { NotifyAgent } from "../agents/notify-agent/notify-agent";
 import { listAchievementsWithProgress, getUserLevel } from "../shared/db/achievement.repository";
+import { isPasswordConfigured, setInitialPassword, login, logout, authenticate } from "../agent-core/auth/auth.service";
+import { isRateLimited, recordFailure, recordSuccess } from "../agent-core/auth/login-rate-limit";
+import { readSessionToken, setSessionCookie, clearSessionCookie } from "./cookies";
 
 interface AgentSummary {
   code: AgentCode;
@@ -47,15 +50,25 @@ function corsHeaders(req: IncomingMessage): Record<string, string> {
     "Access-Control-Allow-Origin": origin,
     "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
     "Access-Control-Allow-Headers": "Content-Type",
+    // The session cookie only round-trips on cross-origin fetches if the
+    // browser is told this API accepts credentialed requests.
+    "Access-Control-Allow-Credentials": "true",
   };
 }
 
-function sendResponse(res: ServerResponse, status: number, body: unknown, extraHeaders: Record<string, string> = {}): void {
+function sendResponse(
+  res: ServerResponse,
+  status: number,
+  body: unknown,
+  extraHeaders: Record<string, string> = {},
+  cookie?: string,
+): void {
   const json = JSON.stringify(body);
-  res.writeHead(status, {
+  const headers: Record<string, string> = {
     "Content-Type": "application/json; charset=utf-8",
     ...extraHeaders,
-  });
+  };
+  res.writeHead(status, cookie ? { ...headers, "Set-Cookie": cookie } : headers);
   res.end(json);
 }
 
@@ -69,17 +82,23 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 /**
  * Minimal REST surface over agent-core, matching the API listed in
  * docs/agent-office/04-component-structure.md §4.4 (the subset Agent
- * Office Room + Detail Drawer need for Phase 0).
+ * Office Room + Detail Drawer need for Phase 0), plus /api/auth/* —
+ * see SECURITY.md for why authentication was added in Phase 6.
  */
 export interface HttpServerOptions {
   /** Used when a watch request omits `path` — the demo desktop folder. */
   defaultWatchPath?: string;
 }
 
+// Every other /api/* route requires a valid session — these are the only
+// ones reachable before logging in (status to know which screen to show,
+// setup to configure the very first password, login to get a session).
+const PUBLIC_AUTH_PATHS = new Set(["auth/status", "auth/setup", "auth/login"]);
+
 export function createHttpServer(office: AgentOffice, options: HttpServerOptions = {}) {
   return createServer(async (req, res) => {
     const cors = corsHeaders(req);
-    const send = (status: number, body: unknown) => sendResponse(res, status, body, cors);
+    const send = (status: number, body: unknown, cookie?: string) => sendResponse(res, status, body, cors, cookie);
 
     if (req.method === "OPTIONS") {
       send(204, null);
@@ -90,6 +109,17 @@ export function createHttpServer(office: AgentOffice, options: HttpServerOptions
     const parts = url.pathname.split("/").filter(Boolean); // ["api", "agents", ...]
 
     try {
+      if (parts[0] === "api" && parts[1] === "auth") {
+        return await handleAuth(office, req, parts.slice(2), send);
+      }
+
+      const routePath = parts.join("/");
+      const sessionToken = readSessionToken(req);
+      const authenticatedUserId = PUBLIC_AUTH_PATHS.has(routePath) ? null : authenticate(office.db, sessionToken);
+      if (!PUBLIC_AUTH_PATHS.has(routePath) && !authenticatedUserId) {
+        return send(401, { error: "unauthorized" });
+      }
+
       if (req.method === "GET" && parts.length === 2 && parts[0] === "api" && parts[1] === "agents") {
         const agents = office.registry.list().map((agent) => toSummary(office, agent.code));
         send(200, agents);
@@ -183,4 +213,57 @@ export function createHttpServer(office: AgentOffice, options: HttpServerOptions
       send(500, { error: error instanceof Error ? error.message : "internal error" });
     }
   });
+}
+
+async function handleAuth(
+  office: AgentOffice,
+  req: IncomingMessage,
+  subPath: string[],
+  send: (status: number, body: unknown, cookie?: string) => void,
+): Promise<void> {
+  if (req.method === "GET" && subPath[0] === "status") {
+    const token = readSessionToken(req);
+    const userId = authenticate(office.db, token);
+    return send(200, {
+      configured: isPasswordConfigured(office.db, office.userId),
+      authenticated: userId !== null,
+    });
+  }
+
+  if (req.method === "POST" && subPath[0] === "setup") {
+    if (isPasswordConfigured(office.db, office.userId)) {
+      return send(409, { error: "already configured" });
+    }
+    const body = (await readJsonBody(req)) as { password?: string };
+    if (!body.password || body.password.length < 8) {
+      return send(400, { error: "password must be at least 8 characters" });
+    }
+    setInitialPassword(office.db, office.userId, body.password);
+    const outcome = login(office.db, office.userId, body.password);
+    return send(200, { success: true }, setSessionCookie(outcome.token!));
+  }
+
+  if (req.method === "POST" && subPath[0] === "login") {
+    const rateLimitKey = req.socket.remoteAddress ?? "unknown";
+    if (isRateLimited(rateLimitKey)) {
+      return send(429, { error: "พยายามเข้าสู่ระบบผิดหลายครั้งเกินไป กรุณาลองใหม่ภายหลัง" });
+    }
+
+    const body = (await readJsonBody(req)) as { password?: string };
+    const outcome = login(office.db, office.userId, body.password ?? "");
+    if (!outcome.success) {
+      recordFailure(rateLimitKey);
+      return send(401, { error: outcome.reasonTh });
+    }
+    recordSuccess(rateLimitKey);
+    return send(200, { success: true }, setSessionCookie(outcome.token!));
+  }
+
+  if (req.method === "POST" && subPath[0] === "logout") {
+    const token = readSessionToken(req);
+    if (token) logout(office.db, token);
+    return send(200, { success: true }, clearSessionCookie());
+  }
+
+  send(404, { error: "not found" });
 }

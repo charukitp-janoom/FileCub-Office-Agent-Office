@@ -4,6 +4,44 @@ This documents the security pass done before the Phase 6 "release candidate"
 milestone in `docs/agent-office/05-development-plan.md`, what was found, what
 was fixed, and what's explicitly still a known limitation.
 
+## Fixed after Phase 6: authentication
+
+Phase 6 shipped with the API wide open (see "Known limitation" below, kept
+for history). This has since been fixed:
+
+- **Password**: set once, on first run, via `POST /api/auth/setup` (min 8
+  characters). Hashed with `crypto.scryptSync` + a random 16-byte salt
+  (`src/agent-core/auth/password.ts`); the plaintext password is never
+  stored. Verification uses `crypto.timingSafeEqual`.
+- **Sessions**: `POST /api/auth/login` issues an opaque 32-byte random
+  token, stored client-side as an `HttpOnly; SameSite=Lax` cookie
+  (`fc_session`, 30-day expiry). The server never stores the raw token —
+  only its SHA-256 hash (`src/agent-core/auth/session.repository.ts`), so a
+  read of the `sessions` table can't be replayed as a valid cookie.
+- **Enforcement**: every `/api/*` route except `auth/status`, `auth/setup`,
+  and `auth/login` now requires a valid session and returns `401` without
+  one (`src/server/http-server.ts`). `bootstrapAgentOffice()` still binds
+  one `userId` per running instance (see scope note below) — the session
+  gates *whether* a request is let through, not *which* user it acts as.
+- **Login rate-limiting**: `src/agent-core/auth/login-rate-limit.ts` locks
+  out an IP after 5 failed `/api/auth/login` attempts within 15 minutes
+  (`429`), reset on the next success, to blunt online password guessing.
+- **CORS**: `Access-Control-Allow-Credentials: true` is now also reflected
+  alongside the existing origin allowlist, so the session cookie round-trips
+  from the allowed dev-server origin without reopening the wildcard hole
+  fixed below.
+
+**Scope**: this is single-tenant, local/LAN protection — one password gates
+the one account this instance runs as. It is *not* multi-user auth; there is
+still exactly one `userId` per running process. That matches the product
+today (each person runs their own desktop instance) — see "Known
+limitation" below for what would still be needed before exposing this to
+multiple distinct users or an untrusted network.
+
+Covered by `src/agent-core/auth/auth.test.ts`,
+`src/agent-core/auth/login-rate-limit.test.ts`, and the `auth:`-prefixed
+tests in `src/server/http-server.test.ts`.
+
 ## Fixed in this pass
 
 ### 1. Wildcard CORS on the local/LAN API server
@@ -55,22 +93,24 @@ not satisfy a write-level check"`).
 
 ## Known limitation (by design, not a bug to silently ignore)
 
-**The HTTP API has no authentication.** `bootstrapAgentOffice()` is always
-called with a single hardcoded `userId` (`"demo-admin"`, role `admin`), and
-every request acts as that user — RBAC checks exist and are now correctly
-enforced (see fix #2), but they're checking a role that's always `admin` in
-this single-tenant demo deployment. This is fine for local/trusted-LAN use
-by one person, which is this phase's target, but it means:
+**Still single-tenant.** `bootstrapAgentOffice()` is still always called
+with one fixed `userId` (`"demo-admin"`) — a valid session now proves
+*someone* who knows the password is asking, but every session acts as the
+same account. RBAC checks exist and are correctly enforced (see fix #2),
+but they're checking a role that's always `admin` for that one account.
+This is fine for local/trusted-LAN use by one person, which remains this
+product's target (each person runs their own desktop instance), but it
+means:
 
-- Anyone who can reach the API (same machine, or same LAN if the port is
-  reachable) has full access — there's no login, session, or per-request
-  identity.
-- RBAC becomes meaningful only once real multi-user authentication (e.g. a
-  login flow issuing per-user sessions/tokens, with `bootstrapAgentOffice`'s
-  `userId` coming from that session instead of a constant) is added.
+- There's no concept of a second, less-privileged user on the same
+  instance — the password is all-or-nothing access to everything this
+  instance manages.
+- Real multi-user support would need `bootstrapAgentOffice`'s `userId` to
+  come from the session (looked up per-request, not bound once at startup)
+  plus a way to create additional accounts with their own passwords and
+  RBAC grants.
 
-**Recommendation before deploying beyond a single trusted user/LAN:** add an
-authentication layer (session cookie or token) that resolves a real
-`userId` per request, and stop hardcoding `"demo-admin"` in
-`src/server/index.ts`. Until then, don't expose this port beyond a network
-you trust every device on.
+**Recommendation before exposing this beyond one trusted person on a
+trusted LAN:** don't — a shared password on an open LAN port is still a
+single shared secret. If multiple people need distinct access, build
+per-user accounts as described above before widening exposure.
