@@ -4,6 +4,7 @@ import { agentUIConfig } from "./agentUIConfig";
 import { DesktopWatchToggle } from "./DesktopWatchToggle";
 import { SearchBox } from "./SearchBox";
 import { AiAskBox } from "./AiAskBox";
+import { NotificationCenter } from "../notifications/NotificationCenter";
 import type { ActivityLogEntry, AgentSummary } from "./types";
 
 interface AgentDetailDrawerProps {
@@ -103,6 +104,7 @@ export function AgentDetailDrawer({ agent, onClose, onRan }: AgentDetailDrawerPr
         {agent.code === "upload" && <DesktopWatchToggle onChange={handleSideEffectDone} />}
         {agent.code === "search" && <SearchBox onDone={handleSideEffectDone} />}
         {agent.code === "ai" && <AiAskBox onDone={handleSideEffectDone} />}
+        {agent.code === "notify" && <NotificationCenter onChange={handleSideEffectDone} />}
 
         {config.primaryCapability && (
           <button type="button" className="primary-action" onClick={handlePrimaryAction} disabled={running}>

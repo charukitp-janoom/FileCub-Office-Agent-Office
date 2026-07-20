@@ -4,6 +4,7 @@ import type { AgentSummary } from "./types";
 interface AgentSpriteProps {
   agent: AgentSummary;
   onClick: (agent: AgentSummary) => void;
+  unreadCount?: number;
 }
 
 const STATUS_LABEL_TH: Record<string, string> = {
@@ -13,13 +14,18 @@ const STATUS_LABEL_TH: Record<string, string> = {
   disabled: "ปิดใช้งาน",
 };
 
-export function AgentSprite({ agent, onClick }: AgentSpriteProps) {
+export function AgentSprite({ agent, onClick, unreadCount = 0 }: AgentSpriteProps) {
   const config = agentUIConfig[agent.code];
 
   return (
     <button type="button" className="agent-sprite" onClick={() => onClick(agent)}>
       <span className="agent-sprite__icon" aria-hidden="true">
         {config.emoji}
+        {unreadCount > 0 && (
+          <span className="agent-sprite__badge" aria-label={`${unreadCount} การแจ้งเตือนใหม่`}>
+            {unreadCount}
+          </span>
+        )}
       </span>
       <span className="agent-sprite__nickname">{agent.nicknameTh}</span>
       <span className="agent-sprite__role">{agent.roleTitleTh}</span>

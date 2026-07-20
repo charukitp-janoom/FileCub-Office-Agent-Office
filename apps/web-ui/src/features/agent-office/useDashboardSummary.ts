@@ -4,9 +4,17 @@ import type { DashboardSummary } from "./types";
 
 const POLL_INTERVAL_MS = 4000;
 
-/** Phase 1's "Dashboard tile พื้นฐาน" — live counts straight from agent_activity_logs. */
+const EMPTY_SUMMARY: DashboardSummary = {
+  filesToday: 0,
+  filesOrganized: 0,
+  storageSavedBytes: 0,
+  filesBackedUp: 0,
+  aiTasksCompleted: 0,
+};
+
+/** Agent Office Dashboard tiles — live counts straight from agent_activity_logs/files/backup_jobs. */
 export function useDashboardSummary() {
-  const [summary, setSummary] = useState<DashboardSummary>({ filesToday: 0, filesOrganized: 0 });
+  const [summary, setSummary] = useState<DashboardSummary>(EMPTY_SUMMARY);
 
   const refresh = useCallback(async () => {
     try {

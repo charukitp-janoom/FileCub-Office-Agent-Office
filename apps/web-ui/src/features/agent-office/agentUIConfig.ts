@@ -23,6 +23,9 @@ export const agentUIConfig: Record<AgentCode, AgentUIConfig> = {
   upload: { emoji: "☁️" },
   security: { emoji: "🛡️", primaryCapability: "activity-log", primaryActionLabelTh: "ตรวจสอบ Activity Log" },
   ai: { emoji: "🤖" },
-  notify: { emoji: "📧", primaryCapability: "new-file-alert", primaryActionLabelTh: "ทดสอบแจ้งเตือน" },
+  // notify gets a real Notification Center (NotificationCenter.tsx) instead
+  // of the generic button — its 5 declared capabilities are event-driven
+  // triggers, not something a no-argument button meaningfully "runs".
+  notify: { emoji: "📧" },
   backup: { emoji: "💾", primaryCapability: "auto-backup", primaryActionLabelTh: "สำรองข้อมูลตอนนี้" },
 };

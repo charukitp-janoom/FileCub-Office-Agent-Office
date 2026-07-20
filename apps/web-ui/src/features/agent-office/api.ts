@@ -1,4 +1,12 @@
-import type { ActivityLogEntry, AgentRunResult, AgentSummary, DashboardSummary, WatchStatus } from "./types";
+import type {
+  ActivityLogEntry,
+  AgentRunResult,
+  AgentSummary,
+  DashboardSummary,
+  DashboardTrendPoint,
+  NotificationItem,
+  WatchStatus,
+} from "./types";
 
 async function json<T>(res: Response): Promise<T> {
   if (!res.ok) throw new Error(`Request failed: ${res.status}`);
@@ -23,4 +31,9 @@ export const agentOfficeApi = {
       body: JSON.stringify({ enabled }),
     }).then((r) => json<WatchStatus>(r)),
   getDashboardSummary: () => fetch("/api/dashboard/summary").then((r) => json<DashboardSummary>(r)),
+  getDashboardTrend: (days = 7) => fetch(`/api/dashboard/trend?days=${days}`).then((r) => json<DashboardTrendPoint[]>(r)),
+  getNotifications: (unreadOnly = false) =>
+    fetch(`/api/notifications${unreadOnly ? "?unread=true" : ""}`).then((r) => json<NotificationItem[]>(r)),
+  markNotificationRead: (id: string) => fetch(`/api/notifications/${id}/read`, { method: "POST" }).then((r) => json(r)),
+  markAllNotificationsRead: () => fetch("/api/notifications/read-all", { method: "POST" }).then((r) => json(r)),
 };
