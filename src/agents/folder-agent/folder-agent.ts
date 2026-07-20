@@ -1,5 +1,12 @@
 import { BaseAgent } from "../../agent-core/base-agent";
 import type { AgentCapability, AgentCode, AgentEvent, AgentRunResult } from "../../agent-core/types";
+import type { AgentDb } from "../../shared/db/client";
+import { matchCategory } from "./rules-engine";
+import { getCategory, getFile, organizeFile } from "./folder-agent.repository";
+
+export interface OrganizePayload {
+  fileId: string;
+}
 
 export class FolderAgent extends BaseAgent {
   code: AgentCode = "folder";
@@ -16,25 +23,46 @@ export class FolderAgent extends BaseAgent {
 
   async onEvent(event: AgentEvent): Promise<void> {
     if (event.name === "file.imported") {
-      await this.runCapability("auto-organize", event.payload);
+      const payload = event.payload as { fileId?: string };
+      if (payload.fileId) {
+        await this.runCapability("auto-organize", { fileId: payload.fileId } satisfies OrganizePayload);
+      }
     }
   }
 
-  async runCapability(key: string, _payload?: unknown): Promise<AgentRunResult> {
-    // Rule matching against folder_rules lives in rules-engine.ts (see docs/agent-office/04-component-structure.md).
-    this.setStatus({ state: "working", message: "กำลังจัดหมวดหมู่ไฟล์" });
-
-    if (this.ctx) {
-      await this.ctx.eventBus.publish({
-        name: "file.organized",
-        sourceAgent: this.code,
-        userId: this.ctx.userId,
-        payload: { capability: key },
-        createdAt: new Date().toISOString(),
-      });
+  async runCapability(key: string, payload?: unknown): Promise<AgentRunResult> {
+    if (key !== "auto-organize") {
+      return { success: true, summaryTh: `รัน ${key} เรียบร้อย` };
     }
 
+    const { fileId } = (payload as OrganizePayload) ?? {};
+    if (!fileId || !this.ctx) {
+      return { success: false, summaryTh: "ต้องระบุไฟล์ที่จะจัดหมวดหมู่ (fileId)" };
+    }
+
+    this.setStatus({ state: "working", message: "กำลังจัดหมวดหมู่ไฟล์" });
+    const db = this.ctx.db.raw as AgentDb;
+
+    const file = getFile(db, fileId);
+    if (!file) {
+      this.setStatus({ state: "idle" });
+      return { success: false, summaryTh: "ไม่พบไฟล์ที่ระบุ" };
+    }
+
+    const categoryId = matchCategory(db, file.name);
+    organizeFile(db, fileId, categoryId);
+    const category = getCategory(db, categoryId);
+    const categoryNameTh = category?.name_th ?? "เอกสารทั่วไป";
+
+    await this.ctx.eventBus.publish({
+      name: "file.organized",
+      sourceAgent: this.code,
+      userId: this.ctx.userId,
+      payload: { fileId, fileName: file.name, categoryId, categoryNameTh },
+      createdAt: new Date().toISOString(),
+    });
+
     this.setStatus({ state: "idle", lastRunAt: new Date().toISOString() });
-    return { success: true, summaryTh: "จัดหมวดหมู่ไฟล์เรียบร้อย" };
+    return { success: true, summaryTh: `ย้ายไฟล์ "${file.name}" เข้า "${categoryNameTh}" แล้ว` };
   }
 }

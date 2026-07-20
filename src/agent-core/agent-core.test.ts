@@ -9,7 +9,10 @@ import { SqlitePermissionChecker, PermissionDeniedError } from "./permission-che
 
 import { openDb } from "../shared/db/client";
 import { runMigrations } from "../shared/db/migrate";
-import { seedAchievements, seedAgents, ensureUser } from "../shared/db/seed";
+import { seedAchievements, seedAgents, seedFileCategories, ensureUser } from "../shared/db/seed";
+import { mkdtempSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { SqliteActivityLogWriter } from "../shared/db/activity-log.repository";
 
 import { FolderAgent } from "../agents/folder-agent/folder-agent";
@@ -35,6 +38,7 @@ function setupDb() {
     new BackupAgent(),
   ]);
   seedAchievements(db);
+  seedFileCategories(db);
   ensureUser(db, "user-1");
   return db;
 }
@@ -142,43 +146,72 @@ test("SqlitePermissionChecker allows admins unconditionally", async () => {
   await assert.doesNotReject(() => checker.check("user-1", "file:delete", "file-1"));
 });
 
-test("FolderAgent auto-organizes on file.imported and SearchAgent reports result counts", async () => {
+function noopContext(db: ReturnType<typeof setupDb>, bus: InProcessEventBus, userId = "user-1") {
+  return {
+    userId,
+    eventBus: bus,
+    db: { agentId: "folder" as const, raw: db },
+    permissions: { check: async () => {} },
+    logger: { info: () => {}, error: () => {} },
+  };
+}
+
+test("UploadAgent imports a real file and FolderAgent auto-organizes it by the poster's before/after rules", async () => {
   const db = setupDb();
   const bus = new InProcessEventBus();
   const writer = new SqliteActivityLogWriter(db);
   attachActivityLogger(bus, writer);
 
+  const upload = new UploadAgent();
+  await upload.init(noopContext(db, bus));
+
   const folder = new FolderAgent();
-  await folder.init({
-    userId: "user-1",
-    eventBus: bus,
-    db: { agentId: "folder" },
-    permissions: { check: async () => {} },
-    logger: { info: () => {}, error: () => {} },
-  });
+  await folder.init(noopContext(db, bus));
   bus.subscribe("file.imported", (e) => void folder.onEvent?.(e));
 
-  const organized: string[] = [];
-  bus.subscribe("file.organized", (e) => organized.push(e.sourceAgent));
+  const organized: Array<{ fileName: string; categoryNameTh: string }> = [];
+  bus.subscribe("file.organized", (e) => organized.push(e.payload as { fileName: string; categoryNameTh: string }));
 
-  await bus.publish({
-    name: "file.imported",
-    sourceAgent: "upload",
-    userId: "user-1",
-    payload: {},
-    createdAt: new Date().toISOString(),
-  });
+  const dir = mkdtempSync(join(tmpdir(), "filecub-desktop-"));
+  writeFileSync(join(dir, "report-final.docx"), "dummy content");
+  writeFileSync(join(dir, "scan001.pdf"), "dummy content");
+  writeFileSync(join(dir, "IMG001.jpg"), "dummy content");
 
-  assert.deepEqual(organized, ["folder"]);
+  for (const name of ["report-final.docx", "scan001.pdf", "IMG001.jpg"]) {
+    const result = await upload.runCapability("manual-upload", { sourcePath: join(dir, name) });
+    assert.equal(result.success, true);
+  }
 
+  assert.deepEqual(
+    organized.map((o) => [o.fileName, o.categoryNameTh]).sort(),
+    [
+      ["IMG001.jpg", "รูปภาพ"],
+      ["report-final.docx", "เอกสารรายงาน"],
+      ["scan001.pdf", "เอกสารสแกน"],
+    ].sort(),
+  );
+
+  // Re-importing the same path is a no-op, not a duplicate.
+  const duplicate = await upload.runCapability("manual-upload", { sourcePath: join(dir, "report-final.docx") });
+  assert.equal(duplicate.success, false);
+});
+
+test("UploadAgent rejects files that fail validation", async () => {
+  const db = setupDb();
+  const bus = new InProcessEventBus();
+  const upload = new UploadAgent();
+  await upload.init(noopContext(db, bus));
+
+  const result = await upload.runCapability("manual-upload", { sourcePath: "/nonexistent/path.pdf" });
+  assert.equal(result.success, false);
+  assert.match(result.summaryTh, /ไม่พบไฟล์/);
+});
+
+test("SearchAgent reports result counts", async () => {
+  const db = setupDb();
+  const bus = new InProcessEventBus();
   const search = new SearchAgent();
-  await search.init({
-    userId: "user-1",
-    eventBus: bus,
-    db: { agentId: "search" },
-    permissions: { check: async () => {} },
-    logger: { info: () => {}, error: () => {} },
-  });
+  await search.init(noopContext(db, bus));
   const result = await search.runCapability("search-by-name", { query: "test" });
   assert.equal(result.success, true);
   assert.match(result.summaryTh, /พบ \d+ รายการ/);

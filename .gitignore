@@ -3,4 +3,5 @@ dist/
 *.sqlite
 *.sqlite-journal
 *.log
+demo-desktop/
 *.tsbuildinfo

@@ -2,8 +2,11 @@ import type { AgentCode } from "./types";
 
 export interface AgentUIConfig {
   emoji: string;
-  primaryCapability: string;
-  primaryActionLabelTh: string;
+  /** Omit for agents whose primary action needs a real payload the generic
+   * button can't supply (folder/upload) — they get a bespoke drawer section
+   * instead (see AgentDetailDrawer.tsx). */
+  primaryCapability?: string;
+  primaryActionLabelTh?: string;
 }
 
 /**
@@ -12,9 +15,9 @@ export interface AgentUIConfig {
  * adding one entry here — the drawer component itself never changes.
  */
 export const agentUIConfig: Record<AgentCode, AgentUIConfig> = {
-  folder: { emoji: "🗂️", primaryCapability: "auto-organize", primaryActionLabelTh: "จัดหมวดหมู่ไฟล์ตอนนี้" },
+  folder: { emoji: "🗂️" },
   search: { emoji: "🔍", primaryCapability: "search-by-name", primaryActionLabelTh: "ลองค้นหา" },
-  upload: { emoji: "☁️", primaryCapability: "manual-upload", primaryActionLabelTh: "นำเข้าไฟล์ตอนนี้" },
+  upload: { emoji: "☁️" },
   security: { emoji: "🛡️", primaryCapability: "activity-log", primaryActionLabelTh: "ตรวจสอบ Activity Log" },
   ai: { emoji: "🤖", primaryCapability: "qa-about-app", primaryActionLabelTh: "ถาม Cub AI" },
   notify: { emoji: "📧", primaryCapability: "new-file-alert", primaryActionLabelTh: "ทดสอบแจ้งเตือน" },
