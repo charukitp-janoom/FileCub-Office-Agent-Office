@@ -39,7 +39,8 @@ export type AgentEventName =
   | "security.permission_denied"
   | "ai.summary_ready"
   | "backup.completed"
-  | "backup.failed";
+  | "backup.failed"
+  | "achievement.unlocked";
 
 export interface AgentEvent<T = unknown> {
   name: AgentEventName;

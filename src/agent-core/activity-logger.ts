@@ -23,6 +23,7 @@ const ALL_EVENTS: AgentEventName[] = [
   "ai.summary_ready",
   "backup.completed",
   "backup.failed",
+  "achievement.unlocked",
 ];
 
 /**
