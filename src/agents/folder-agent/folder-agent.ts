@@ -20,7 +20,7 @@ export class FolderAgent extends BaseAgent {
     }
   }
 
-  async runCapability(key: string): Promise<AgentRunResult> {
+  async runCapability(key: string, _payload?: unknown): Promise<AgentRunResult> {
     // Rule matching against folder_rules lives in rules-engine.ts (see docs/agent-office/04-component-structure.md).
     this.setStatus({ state: "working", message: "กำลังจัดหมวดหมู่ไฟล์" });
 

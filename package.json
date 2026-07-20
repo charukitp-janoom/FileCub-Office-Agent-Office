@@ -1,0 +1,20 @@
+{
+  "name": "filecub-office-agent-office",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Agent Office - AI Pixel Agent workforce for FileCub Office",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json && mkdir -p dist/shared/db/migrations && cp src/shared/db/migrations/*.sql dist/shared/db/migrations/",
+    "test": "node --import tsx --test src/**/*.test.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  }
+}

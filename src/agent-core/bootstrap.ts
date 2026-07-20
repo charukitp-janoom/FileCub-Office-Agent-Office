@@ -1,7 +1,14 @@
 import { AgentRegistry } from "./registry";
 import { InProcessEventBus } from "./event-bus";
-import { attachActivityLogger, type ActivityLogWriter } from "./activity-logger";
-import type { AgentContext, PermissionChecker } from "./types";
+import { attachActivityLogger } from "./activity-logger";
+import { AchievementEngine } from "./achievement-engine";
+import { SqlitePermissionChecker } from "./permission-checker";
+import type { AgentContext } from "./types";
+
+import { openDb, type AgentDb } from "../shared/db/client";
+import { runMigrations } from "../shared/db/migrate";
+import { seedAgents, seedAchievements, ensureUser } from "../shared/db/seed";
+import { SqliteActivityLogWriter } from "../shared/db/activity-log.repository";
 
 import { FolderAgent } from "../agents/folder-agent/folder-agent";
 import { SearchAgent } from "../agents/search-agent/search-agent";
@@ -13,19 +20,38 @@ import { BackupAgent } from "../agents/backup-agent/backup-agent";
 
 export interface BootstrapDeps {
   userId: string;
-  activityLogWriter: ActivityLogWriter;
-  permissions: PermissionChecker;
+  /** SQLite file path, or ":memory:" for tests. Defaults to a local file next to the app. */
+  dbPath?: string;
+}
+
+export interface AgentOffice {
+  registry: AgentRegistry;
+  db: AgentDb;
 }
 
 /**
- * Single place where every agent is registered. Adding agent #8 means
- * adding one line here — nothing else in agent-core, the dashboard, or
- * the achievement engine needs to change.
+ * Single place where the database is opened/migrated, every agent is
+ * registered, and the cross-cutting consumers (activity logger,
+ * achievement engine) are wired to the event bus. Adding agent #8 means
+ * adding one line to the `agents` array below — nothing else here, in the
+ * dashboard, or in the achievement engine needs to change.
  */
-export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentRegistry> {
+export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentOffice> {
+  const db = openDb(deps.dbPath ?? "agent-office.sqlite");
+  runMigrations(db);
+
+  ensureUser(db, deps.userId);
+
   const registry = new AgentRegistry();
   const eventBus = new InProcessEventBus();
-  attachActivityLogger(eventBus, deps.activityLogWriter);
+
+  const activityLogWriter = new SqliteActivityLogWriter(db);
+  attachActivityLogger(eventBus, activityLogWriter);
+
+  const achievementEngine = new AchievementEngine(db, activityLogWriter);
+  achievementEngine.attach(eventBus);
+
+  const permissions = new SqlitePermissionChecker(db);
 
   const agents = [
     new FolderAgent(),
@@ -37,6 +63,9 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentRe
     new BackupAgent(),
   ];
 
+  seedAgents(db, agents);
+  seedAchievements(db);
+
   for (const agent of agents) {
     registry.register(agent);
 
@@ -44,7 +73,7 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentRe
       userId: deps.userId,
       eventBus,
       db: { agentId: agent.code },
-      permissions: deps.permissions,
+      permissions,
       logger: {
         info: (message, meta) => console.info(`[${agent.code}]`, message, meta ?? ""),
         error: (message, meta) => console.error(`[${agent.code}]`, message, meta ?? ""),
@@ -62,5 +91,5 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentRe
     }
   }
 
-  return registry;
+  return { registry, db };
 }
