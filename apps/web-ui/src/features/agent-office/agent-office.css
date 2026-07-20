@@ -103,6 +103,39 @@
   line-height: 1;
   position: relative;
   display: inline-block;
+  animation: sprite-idle 3s ease-in-out infinite;
+}
+
+.agent-sprite__icon--working {
+  animation: sprite-working 0.6s ease-in-out infinite;
+}
+
+.agent-sprite__icon--error {
+  animation: sprite-shake 0.4s ease-in-out;
+}
+
+@keyframes sprite-idle {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+@keyframes sprite-working {
+  0%, 100% { transform: scale(1) rotate(0deg); }
+  50% { transform: scale(1.08) rotate(-4deg); }
+}
+
+@keyframes sprite-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-3px); }
+  75% { transform: translateX(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-sprite__icon,
+  .agent-sprite__icon--working,
+  .agent-sprite__icon--error {
+    animation: none;
+  }
 }
 
 .agent-sprite__badge {

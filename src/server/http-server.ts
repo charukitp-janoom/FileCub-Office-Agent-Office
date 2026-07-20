@@ -29,13 +29,32 @@ function toSummary(office: AgentOffice, code: AgentCode): AgentSummary | undefin
   };
 }
 
-function send(res: ServerResponse, status: number, body: unknown): void {
+// Default-deny CORS: a wildcard Access-Control-Allow-Origin here would let
+// any website the user has open in a tab make authenticated-by-network-
+// position requests against this API (it listens on all interfaces, per
+// the poster's "รองรับ LAN" feature) and read the responses — a classic
+// "malicious page attacks your local/LAN service" hole. Only the dev
+// server origin (or ALLOWED_ORIGINS, comma-separated) gets the header;
+// everyone else's browser is left to same-origin-policy block the read.
+const ALLOWED_ORIGINS = new Set(
+  (process.env.ALLOWED_ORIGINS ?? "http://localhost:5173,http://127.0.0.1:5173").split(",").map((o) => o.trim()),
+);
+
+function corsHeaders(req: IncomingMessage): Record<string, string> {
+  const origin = req.headers.origin;
+  if (!origin || !ALLOWED_ORIGINS.has(origin)) return {};
+  return {
+    "Access-Control-Allow-Origin": origin,
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+  };
+}
+
+function sendResponse(res: ServerResponse, status: number, body: unknown, extraHeaders: Record<string, string> = {}): void {
   const json = JSON.stringify(body);
   res.writeHead(status, {
     "Content-Type": "application/json; charset=utf-8",
-    "Access-Control-Allow-Origin": "*",
-    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-    "Access-Control-Allow-Headers": "Content-Type",
+    ...extraHeaders,
   });
   res.end(json);
 }
@@ -59,8 +78,11 @@ export interface HttpServerOptions {
 
 export function createHttpServer(office: AgentOffice, options: HttpServerOptions = {}) {
   return createServer(async (req, res) => {
+    const cors = corsHeaders(req);
+    const send = (status: number, body: unknown) => sendResponse(res, status, body, cors);
+
     if (req.method === "OPTIONS") {
-      send(res, 204, null);
+      send(204, null);
       return;
     }
 
@@ -70,7 +92,7 @@ export function createHttpServer(office: AgentOffice, options: HttpServerOptions
     try {
       if (req.method === "GET" && parts.length === 2 && parts[0] === "api" && parts[1] === "agents") {
         const agents = office.registry.list().map((agent) => toSummary(office, agent.code));
-        send(res, 200, agents);
+        send(200, agents);
         return;
       }
 
@@ -79,86 +101,86 @@ export function createHttpServer(office: AgentOffice, options: HttpServerOptions
 
         if (req.method === "GET" && parts.length === 3) {
           const summary = toSummary(office, code);
-          if (!summary) return send(res, 404, { error: "agent not found" });
-          return send(res, 200, summary);
+          if (!summary) return send(404, { error: "agent not found" });
+          return send(200, summary);
         }
 
         if (req.method === "GET" && parts.length === 4 && parts[3] === "activity") {
           const limit = Number(url.searchParams.get("limit") ?? "10");
-          return send(res, 200, office.activityLog.recentForAgent(code, limit));
+          return send(200, office.activityLog.recentForAgent(code, limit));
         }
 
         if (req.method === "POST" && parts.length === 4 && parts[3] === "run") {
           const agent = office.registry.get(code);
-          if (!agent) return send(res, 404, { error: "agent not found" });
+          if (!agent) return send(404, { error: "agent not found" });
           const body = (await readJsonBody(req)) as { capability: string; payload?: unknown };
           const result = await agent.runCapability(body.capability, body.payload);
-          return send(res, 200, result);
+          return send(200, result);
         }
 
         if (code === "upload" && parts.length === 4 && parts[3] === "watch") {
           const agent = office.registry.get("upload") as UploadAgent | undefined;
-          if (!agent) return send(res, 404, { error: "agent not found" });
+          if (!agent) return send(404, { error: "agent not found" });
 
           if (req.method === "GET") {
-            return send(res, 200, agent.getWatchStatus());
+            return send(200, agent.getWatchStatus());
           }
 
           if (req.method === "POST") {
             const body = (await readJsonBody(req)) as { path?: string; enabled?: boolean };
             if (body.enabled === false) {
               await agent.disableDesktopWatch();
-              return send(res, 200, agent.getWatchStatus());
+              return send(200, agent.getWatchStatus());
             }
             const path = body.path ?? options.defaultWatchPath;
-            if (!path) return send(res, 400, { error: "path is required" });
+            if (!path) return send(400, { error: "path is required" });
             agent.enableDesktopWatch(path);
-            return send(res, 200, agent.getWatchStatus());
+            return send(200, agent.getWatchStatus());
           }
         }
       }
 
       if (req.method === "GET" && parts[0] === "api" && parts[1] === "dashboard") {
         if (parts.length === 3 && parts[2] === "summary") {
-          return send(res, 200, await office.dashboard.getSummary(office.userId));
+          return send(200, await office.dashboard.getSummary(office.userId));
         }
         if (parts.length === 3 && parts[2] === "trend") {
           const days = Number(url.searchParams.get("days") ?? "7");
-          return send(res, 200, await office.dashboard.getTrend(office.userId, days));
+          return send(200, await office.dashboard.getTrend(office.userId, days));
         }
       }
 
       if (parts[0] === "api" && parts[1] === "notifications") {
         const notify = office.registry.get("notify") as NotifyAgent | undefined;
-        if (!notify) return send(res, 404, { error: "agent not found" });
+        if (!notify) return send(404, { error: "agent not found" });
 
         if (req.method === "GET" && parts.length === 2) {
           const unreadOnly = url.searchParams.get("unread") === "true";
-          return send(res, 200, notify.listNotifications(unreadOnly));
+          return send(200, notify.listNotifications(unreadOnly));
         }
 
         if (req.method === "POST" && parts.length === 4 && parts[3] === "read") {
           await notify.runCapability("mark-read", { notificationId: parts[2] });
-          return send(res, 200, { success: true });
+          return send(200, { success: true });
         }
 
         if (req.method === "POST" && parts.length === 3 && parts[2] === "read-all") {
           await notify.runCapability("mark-all-read");
-          return send(res, 200, { success: true });
+          return send(200, { success: true });
         }
       }
 
       if (req.method === "GET" && parts[0] === "api" && parts[1] === "achievements" && parts.length === 2) {
-        return send(res, 200, listAchievementsWithProgress(office.db, office.userId));
+        return send(200, listAchievementsWithProgress(office.db, office.userId));
       }
 
       if (req.method === "GET" && parts[0] === "api" && parts[1] === "levels" && parts[2] === "me") {
-        return send(res, 200, getUserLevel(office.db, office.userId));
+        return send(200, getUserLevel(office.db, office.userId));
       }
 
-      send(res, 404, { error: "not found" });
+      send(404, { error: "not found" });
     } catch (error) {
-      send(res, 500, { error: error instanceof Error ? error.message : "internal error" });
+      send(500, { error: error instanceof Error ? error.message : "internal error" });
     }
   });
 }
