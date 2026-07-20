@@ -5,6 +5,10 @@
     radial-gradient(circle at 20% 0%, rgba(47, 174, 102, 0.15), transparent 40%),
     radial-gradient(circle at 80% 0%, rgba(30, 111, 217, 0.2), transparent 40%),
     var(--fc-bg);
+  /* A pixel-game HUD leans on a monospace grid font for numbers/labels —
+     kept to the system stack so the app still renders offline/on LAN with
+     no font CDN dependency. */
+  font-family: "Consolas", "SFMono-Regular", "Courier New", "Segoe UI", "Noto Sans Thai", monospace;
 }
 
 .office-topbar {
@@ -12,10 +16,17 @@
   align-items: center;
   justify-content: space-between;
   background: var(--fc-bg-panel);
-  border: 1px solid var(--fc-border);
-  border-radius: 12px;
+  border: 3px solid var(--fc-border);
+  border-radius: 4px;
   padding: 12px 20px;
   margin-bottom: 24px;
+  /* Chunky "bevel" edge — a light top/left + dark bottom/right hairline
+     faked with layered shadows, the classic retro-HUD panel trick. */
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.06),
+    inset 0 -3px 0 rgba(0, 0, 0, 0.35),
+    0 3px 0 rgba(0, 0, 0, 0.25);
+  position: relative;
 }
 
 .office-topbar h1 {
@@ -24,11 +35,20 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  letter-spacing: 0.02em;
+  text-shadow: 2px 2px 0 rgba(0, 0, 0, 0.35);
 }
 
 .office-topbar .coin {
   color: #f5c542;
-  font-weight: 600;
+  font-weight: 700;
+  background: rgba(245, 197, 66, 0.12);
+  border: 2px solid rgba(245, 197, 66, 0.4);
+  border-radius: 4px;
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .dashboard-tiles {
@@ -40,28 +60,58 @@
 
 .dashboard-tile {
   background: var(--fc-bg-panel);
-  border: 1px solid var(--fc-border);
-  border-radius: 12px;
+  border: 2px solid var(--fc-border);
+  border-radius: 4px;
   padding: 14px 18px;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.05), 0 2px 0 rgba(0, 0, 0, 0.25);
 }
 
 .dashboard-tile__label {
-  font-size: 12px;
+  font-size: 11px;
   color: var(--fc-text-muted);
   margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
 }
 
 .dashboard-tile__value {
   font-size: 24px;
   font-weight: 700;
+  text-shadow: 1px 1px 0 rgba(0, 0, 0, 0.35);
 }
 
 .office-room {
-  background: linear-gradient(180deg, var(--fc-bg-panel) 0%, var(--fc-bg) 100%);
-  border: 1px solid var(--fc-border);
-  border-radius: 16px;
+  background:
+    /* Floor tile checkerboard — the "room" the characters stand in. */
+    repeating-conic-gradient(
+      rgba(255, 255, 255, 0.02) 0% 25%,
+      transparent 0% 50%
+    )
+    0 0 / 40px 40px,
+    linear-gradient(180deg, var(--fc-bg-panel) 0%, var(--fc-bg) 100%);
+  border: 3px solid var(--fc-border);
+  border-radius: 4px;
   padding: 32px 24px;
+  position: relative;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.05),
+    inset 0 -4px 0 rgba(0, 0, 0, 0.3),
+    0 4px 0 rgba(0, 0, 0, 0.25);
 }
+
+/* Corner "bolts" — a cheap way to read as a game panel frame rather than a plain card. */
+.office-room::before,
+.office-room::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  width: 6px;
+  height: 6px;
+  background: var(--fc-border);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.2);
+}
+.office-room::before { left: 8px; }
+.office-room::after { right: 8px; }
 
 .office-room-title {
   color: var(--fc-text-muted);
@@ -74,28 +124,44 @@
 .agent-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
+  gap: 20px;
 }
 
 .agent-sprite {
   background: var(--fc-bg-card);
-  border: 1px solid var(--fc-border);
-  border-radius: 14px;
-  padding: 16px 12px;
+  border: 3px solid var(--fc-border);
+  border-radius: 4px;
+  padding: 18px 12px 14px;
   text-align: center;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 8px;
   color: inherit;
-  transition: transform 0.12s ease, border-color 0.12s ease;
+  position: relative;
+  /* Pixel "3D button" bevel: light inset top, dark drop-shadow "floor"
+     beneath — the card itself reads like a standing platform tile. */
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 4px 0 rgba(0, 0, 0, 0.3);
+  transition: transform 0.1s steps(2), border-color 0.12s ease, box-shadow 0.1s steps(2);
 }
 
 .agent-sprite:hover,
 .agent-sprite:focus-visible {
-  transform: translateY(-3px);
+  transform: translateY(-4px);
   border-color: var(--fc-blue);
   outline: none;
+  box-shadow:
+    inset 0 2px 0 rgba(255, 255, 255, 0.08),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+    0 8px 0 rgba(0, 0, 0, 0.3);
+}
+
+.agent-sprite:active {
+  transform: translateY(0);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.08), inset 0 -2px 0 rgba(0, 0, 0, 0.25);
 }
 
 .agent-sprite__icon {
@@ -103,15 +169,30 @@
   line-height: 1;
   position: relative;
   display: inline-block;
-  animation: sprite-idle 3s ease-in-out infinite;
+  animation: sprite-idle 1.2s steps(4) infinite;
+}
+
+/* The "floor shadow" ellipse a character standing on a tile casts — the
+   cheapest way to make a flat emoji read as occupying the room rather
+   than floating on a card. */
+.agent-sprite__icon::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  bottom: -8px;
+  width: 34px;
+  height: 8px;
+  transform: translateX(-50%);
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.4), transparent 80%);
+  z-index: -1;
 }
 
 .agent-sprite__icon--working {
-  animation: sprite-working 0.6s ease-in-out infinite;
+  animation: sprite-working 0.5s steps(3) infinite;
 }
 
 .agent-sprite__icon--error {
-  animation: sprite-shake 0.4s ease-in-out;
+  animation: sprite-shake 0.3s steps(4);
 }
 
 @keyframes sprite-idle {
@@ -140,24 +221,41 @@
 
 .agent-sprite__badge {
   position: absolute;
-  top: -8px;
-  right: -14px;
+  top: -10px;
+  right: -10px;
   background: var(--fc-error);
   color: white;
   font-size: 11px;
   font-weight: 700;
-  min-width: 18px;
-  height: 18px;
-  border-radius: 999px;
+  min-width: 20px;
+  height: 20px;
+  border-radius: 4px;
+  border: 2px solid var(--fc-bg-card);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   padding: 0 4px;
+  animation: badge-pop 1s steps(3) infinite;
+}
+
+@keyframes badge-pop {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-2px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .agent-sprite__badge {
+    animation: none;
+  }
 }
 
 .agent-sprite__nickname {
   font-weight: 700;
   font-size: 14px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid var(--fc-border);
+  border-radius: 4px;
+  padding: 1px 8px;
 }
 
 .agent-sprite__role {
@@ -177,13 +275,28 @@
 .status-dot {
   width: 8px;
   height: 8px;
-  border-radius: 999px;
+  border-radius: 1px;
   display: inline-block;
 }
 .status-dot--idle { background: var(--fc-idle); }
-.status-dot--working { background: var(--fc-working); box-shadow: 0 0 6px var(--fc-working); }
+.status-dot--working {
+  background: var(--fc-working);
+  box-shadow: 0 0 6px var(--fc-working);
+  animation: status-blink 0.8s steps(1) infinite;
+}
 .status-dot--error { background: var(--fc-error); }
 .status-dot--disabled { background: var(--fc-disabled); }
+
+@keyframes status-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .status-dot--working {
+    animation: none;
+  }
+}
 
 .drawer-backdrop {
   position: fixed;
@@ -197,12 +310,13 @@
 
 .drawer {
   background: var(--fc-bg-panel);
-  border: 1px solid var(--fc-border);
-  border-radius: 16px;
+  border: 3px solid var(--fc-border);
+  border-radius: 4px;
   width: min(480px, 92vw);
   max-height: 85vh;
   overflow-y: auto;
   padding: 24px;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.05), 0 6px 0 rgba(0, 0, 0, 0.3);
 }
 
 .drawer__header {
@@ -259,7 +373,7 @@
 .badge {
   font-size: 11px;
   padding: 2px 8px;
-  border-radius: 999px;
+  border-radius: 4px;
   white-space: nowrap;
 }
 .badge--on { background: rgba(47, 174, 102, 0.2); color: var(--fc-green); }
@@ -277,12 +391,18 @@
   margin-top: 20px;
   width: 100%;
   background: linear-gradient(135deg, var(--fc-blue), var(--fc-green));
-  border: none;
+  border: 2px solid rgba(0, 0, 0, 0.25);
   color: white;
-  font-weight: 600;
+  font-weight: 700;
   padding: 10px 16px;
-  border-radius: 10px;
+  border-radius: 4px;
   font-size: 14px;
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25), 0 3px 0 rgba(0, 0, 0, 0.3);
+  transition: transform 0.08s steps(2), box-shadow 0.08s steps(2);
+}
+.primary-action:active:not(:disabled) {
+  transform: translateY(2px);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.25);
 }
 .primary-action:disabled {
   opacity: 0.6;
