@@ -47,6 +47,27 @@ export function attachActivityLogger(bus: AgentEventBus, writer: ActivityLogWrit
   }
 }
 
+/**
+ * Turns an event's payload into a human-readable Thai line for the
+ * activity feed. Each case reads only the fields that specific event is
+ * documented to carry (see AgentEventName in ./types); unrecognized event
+ * names fall back to a generic "<agent>: <event>" line.
+ */
 function summarize(event: AgentEvent): string {
-  return `${event.sourceAgent}: ${event.name}`;
+  const payload = event.payload as Record<string, unknown> | undefined;
+
+  switch (event.name) {
+    case "file.imported":
+      return payload?.fileName ? `นำเข้าไฟล์ "${payload.fileName}"` : "นำเข้าไฟล์ใหม่";
+    case "file.organized":
+      return payload?.fileName && payload?.categoryNameTh
+        ? `จัดไฟล์ "${payload.fileName}" เข้า "${payload.categoryNameTh}"`
+        : "จัดหมวดหมู่ไฟล์";
+    case "file.searched":
+      return payload?.query ? `ค้นหา "${payload.query}"` : "ค้นหาไฟล์";
+    case "achievement.unlocked":
+      return payload?.achievementNameTh ? `ปลดล็อกความสำเร็จ "${payload.achievementNameTh}"` : "ปลดล็อกความสำเร็จ";
+    default:
+      return `${event.sourceAgent}: ${event.name}`;
+  }
 }

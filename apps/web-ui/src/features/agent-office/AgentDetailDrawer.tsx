@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { agentOfficeApi } from "./api";
 import { agentUIConfig } from "./agentUIConfig";
+import { DesktopWatchToggle } from "./DesktopWatchToggle";
 import type { ActivityLogEntry, AgentSummary } from "./types";
 
 interface AgentDetailDrawerProps {
@@ -45,6 +46,7 @@ export function AgentDetailDrawer({ agent, onClose, onRan }: AgentDetailDrawerPr
   }, [onClose]);
 
   async function handlePrimaryAction() {
+    if (!config.primaryCapability) return;
     setRunning(true);
     setFeedback(null);
     try {
@@ -97,9 +99,13 @@ export function AgentDetailDrawer({ agent, onClose, onRan }: AgentDetailDrawerPr
           </div>
         ))}
 
-        <button type="button" className="primary-action" onClick={handlePrimaryAction} disabled={running}>
-          {running ? "กำลังทำงาน..." : config.primaryActionLabelTh}
-        </button>
+        {agent.code === "upload" && <DesktopWatchToggle onChange={onRan} />}
+
+        {config.primaryCapability && (
+          <button type="button" className="primary-action" onClick={handlePrimaryAction} disabled={running}>
+            {running ? "กำลังทำงาน..." : config.primaryActionLabelTh}
+          </button>
+        )}
         {feedback && <p className="run-feedback">{feedback}</p>}
       </div>
     </div>

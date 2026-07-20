@@ -37,6 +37,17 @@ export class SqliteActivityLogWriter implements ActivityLogWriter {
       .all(agentId, limit);
     return rows as unknown as ActivityLogRecord[];
   }
+
+  /** Count of `eventName` logged for a user since local midnight — powers the Dashboard tiles. */
+  countTodayForUser(userId: string, eventName: string): number {
+    const row = this.db
+      .prepare(`
+        SELECT COUNT(*) as count FROM agent_activity_logs
+        WHERE user_id = ? AND event_name = ? AND date(created_at) = date('now')
+      `)
+      .get(userId, eventName) as { count: number };
+    return row.count;
+  }
 }
 
 export function newLogId(): string {

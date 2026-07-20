@@ -66,6 +66,12 @@ export interface AgentLogger {
 
 export interface AgentDataAccess {
   agentId: AgentCode;
+  /**
+   * Raw SQLite handle (node:sqlite `DatabaseSync`), typed loosely here so
+   * agent-core's own types stay storage-agnostic — concrete agents import
+   * `AgentDb` from shared/db for a typed handle to the same object.
+   */
+  raw: unknown;
 }
 
 export interface AgentContext {

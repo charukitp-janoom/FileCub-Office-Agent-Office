@@ -7,7 +7,7 @@ import type { AgentContext } from "./types";
 
 import { openDb, type AgentDb } from "../shared/db/client";
 import { runMigrations } from "../shared/db/migrate";
-import { seedAgents, seedAchievements, ensureUser } from "../shared/db/seed";
+import { seedAgents, seedAchievements, seedFileCategories, ensureUser } from "../shared/db/seed";
 import { SqliteActivityLogWriter } from "../shared/db/activity-log.repository";
 
 import { FolderAgent } from "../agents/folder-agent/folder-agent";
@@ -67,6 +67,7 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentOf
 
   seedAgents(db, agents);
   seedAchievements(db);
+  seedFileCategories(db);
 
   for (const agent of agents) {
     registry.register(agent);
@@ -74,7 +75,7 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentOf
     const ctx: AgentContext = {
       userId: deps.userId,
       eventBus,
-      db: { agentId: agent.code },
+      db: { agentId: agent.code, raw: db },
       permissions,
       logger: {
         info: (message, meta) => console.info(`[${agent.code}]`, message, meta ?? ""),

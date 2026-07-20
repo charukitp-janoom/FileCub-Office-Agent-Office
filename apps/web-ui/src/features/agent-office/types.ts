@@ -37,3 +37,13 @@ export interface AgentRunResult {
   summaryTh: string;
   data?: unknown;
 }
+
+export interface WatchStatus {
+  watching: boolean;
+  path?: string;
+}
+
+export interface DashboardSummary {
+  filesToday: number;
+  filesOrganized: number;
+}
