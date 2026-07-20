@@ -2,6 +2,7 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import type { AgentOffice } from "../agent-core/bootstrap";
 import type { AgentCode } from "../agent-core/types";
 import type { UploadAgent } from "../agents/upload-agent/upload-agent";
+import type { NotifyAgent } from "../agents/notify-agent/notify-agent";
 
 interface AgentSummary {
   code: AgentCode;
@@ -116,11 +117,34 @@ export function createHttpServer(office: AgentOffice, options: HttpServerOptions
         }
       }
 
-      if (req.method === "GET" && parts.length === 3 && parts[0] === "api" && parts[1] === "dashboard" && parts[2] === "summary") {
-        return send(res, 200, {
-          filesToday: office.activityLog.countTodayForUser(office.userId, "file.imported"),
-          filesOrganized: office.activityLog.countTodayForUser(office.userId, "file.organized"),
-        });
+      if (req.method === "GET" && parts[0] === "api" && parts[1] === "dashboard") {
+        if (parts.length === 3 && parts[2] === "summary") {
+          return send(res, 200, await office.dashboard.getSummary(office.userId));
+        }
+        if (parts.length === 3 && parts[2] === "trend") {
+          const days = Number(url.searchParams.get("days") ?? "7");
+          return send(res, 200, await office.dashboard.getTrend(office.userId, days));
+        }
+      }
+
+      if (parts[0] === "api" && parts[1] === "notifications") {
+        const notify = office.registry.get("notify") as NotifyAgent | undefined;
+        if (!notify) return send(res, 404, { error: "agent not found" });
+
+        if (req.method === "GET" && parts.length === 2) {
+          const unreadOnly = url.searchParams.get("unread") === "true";
+          return send(res, 200, notify.listNotifications(unreadOnly));
+        }
+
+        if (req.method === "POST" && parts.length === 4 && parts[3] === "read") {
+          await notify.runCapability("mark-read", { notificationId: parts[2] });
+          return send(res, 200, { success: true });
+        }
+
+        if (req.method === "POST" && parts.length === 3 && parts[2] === "read-all") {
+          await notify.runCapability("mark-all-read");
+          return send(res, 200, { success: true });
+        }
       }
 
       send(res, 404, { error: "not found" });

@@ -46,6 +46,13 @@ export interface WatchStatus {
 export interface DashboardSummary {
   filesToday: number;
   filesOrganized: number;
+  storageSavedBytes: number;
+  filesBackedUp: number;
+  aiTasksCompleted: number;
+}
+
+export interface DashboardTrendPoint extends DashboardSummary {
+  date: string;
 }
 
 export interface SearchHit {
@@ -53,4 +60,13 @@ export interface SearchHit {
   name: string;
   categoryNameTh: string | null;
   snippet: string;
+}
+
+export interface NotificationItem {
+  id: string;
+  type: string;
+  titleTh: string;
+  messageTh: string;
+  isRead: boolean;
+  createdAt: string;
 }

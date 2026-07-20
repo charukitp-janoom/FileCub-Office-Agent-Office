@@ -9,6 +9,9 @@ import { openDb, type AgentDb } from "../shared/db/client";
 import { runMigrations } from "../shared/db/migrate";
 import { seedAgents, seedAchievements, seedFileCategories, ensureUser } from "../shared/db/seed";
 import { SqliteActivityLogWriter } from "../shared/db/activity-log.repository";
+import { SqliteDashboardRepository } from "../shared/db/dashboard.repository";
+import { DashboardService } from "../agent-dashboard/dashboard.service";
+import { StatsAggregatorJob } from "../agent-dashboard/stats-aggregator.job";
 
 import { FolderAgent } from "../agents/folder-agent/folder-agent";
 import { SearchAgent } from "../agents/search-agent/search-agent";
@@ -30,8 +33,12 @@ export interface AgentOffice {
   registry: AgentRegistry;
   db: AgentDb;
   activityLog: SqliteActivityLogWriter;
+  dashboard: DashboardService;
   userId: string;
 }
+
+/** How often stats-aggregator.job.ts refreshes today's dashboard_stats_daily snapshot. */
+const STATS_AGGREGATION_INTERVAL_MS = 60 * 60 * 1000;
 
 /**
  * Single place where the database is opened/migrated, every agent is
@@ -97,5 +104,8 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentOf
     }
   }
 
-  return { registry, db, activityLog: activityLogWriter, userId: deps.userId };
+  const dashboardService = new DashboardService(new SqliteDashboardRepository(db));
+  new StatsAggregatorJob().start(db, deps.userId, STATS_AGGREGATION_INTERVAL_MS);
+
+  return { registry, db, activityLog: activityLogWriter, dashboard: dashboardService, userId: deps.userId };
 }
