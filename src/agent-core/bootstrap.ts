@@ -27,6 +27,8 @@ export interface BootstrapDeps {
 export interface AgentOffice {
   registry: AgentRegistry;
   db: AgentDb;
+  activityLog: SqliteActivityLogWriter;
+  userId: string;
 }
 
 /**
@@ -91,5 +93,5 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentOf
     }
   }
 
-  return { registry, db };
+  return { registry, db, activityLog: activityLogWriter, userId: deps.userId };
 }

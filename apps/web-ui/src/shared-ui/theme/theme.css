@@ -1,0 +1,32 @@
+:root {
+  --fc-blue: #1e6fd9;
+  --fc-blue-dark: #123a73;
+  --fc-green: #2fae66;
+  --fc-green-dark: #1c7a45;
+  --fc-bg: #0d1b2a;
+  --fc-bg-panel: #13273d;
+  --fc-bg-card: #1b3a57;
+  --fc-text: #eaf2ff;
+  --fc-text-muted: #9fb6cc;
+  --fc-border: #2a4a6b;
+  --fc-idle: #6b7f93;
+  --fc-working: var(--fc-green);
+  --fc-error: #e0554f;
+  --fc-disabled: #4a5a68;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: "Segoe UI", "Noto Sans Thai", system-ui, sans-serif;
+  background: var(--fc-bg);
+  color: var(--fc-text);
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
