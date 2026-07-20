@@ -22,6 +22,21 @@ export class SqliteActivityLogWriter implements ActivityLogWriter {
       .get(userId, eventName) as { count: number };
     return row.count;
   }
+
+  /** Most recent activity for one agent — powers the Agent Detail Drawer's activity list. */
+  recentForAgent(agentId: string, limit = 10): ActivityLogRecord[] {
+    const rows = this.db
+      .prepare(`
+        SELECT id, agent_id as agentId, user_id as userId, event_name as eventName,
+               summary_th as summaryTh, exp_gained as expGained, created_at as createdAt
+        FROM agent_activity_logs
+        WHERE agent_id = ?
+        ORDER BY created_at DESC, rowid DESC
+        LIMIT ?
+      `)
+      .all(agentId, limit);
+    return rows as unknown as ActivityLogRecord[];
+  }
 }
 
 export function newLogId(): string {
