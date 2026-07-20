@@ -3,7 +3,7 @@
 เอกสารนี้ครอบคลุมการใช้งาน Agent Office จริงตามที่ implement แล้ว (Phase 0–5)
 ไม่ใช่การออกแบบเชิงทฤษฎีเหมือนเอกสารก่อนหน้า — ทุกฟีเจอร์ที่อธิบายด้านล่างรันได้จริง
 
-## เริ่มต้นใช้งาน
+## เริ่มต้นใช้งาน (โหมดพัฒนา — สองพอร์ต, hot reload)
 
 ```bash
 npm install
@@ -23,6 +23,59 @@ npm run dev             # เปิด http://localhost:5173
 - สร้างไฟล์ฐานข้อมูล `agent-office.sqlite` และรัน migration ทั้งหมดอัตโนมัติ
 - สร้างโฟลเดอร์สาธิต `demo-desktop/` (ใช้แทน Desktop จริงสำหรับทดสอบ Desktop Auto Import)
 - สร้างผู้ใช้ `demo-admin` สิทธิ์ admin โดยอัตโนมัติ
+
+## ใช้งานจริง (Production — พอร์ตเดียว)
+
+โหมดนี้เหมาะกับการรันค้างไว้ใช้งานจริง (ไม่ใช่ระหว่างพัฒนา): build เว็บเป็นไฟล์ static
+แล้วให้ API server ตัวเดียวกันเสิร์ฟทั้ง API และหน้าเว็บบนพอร์ตเดียว — ไม่ต้องเปิด
+Vite dev server ค้างไว้ ไม่ต้องตั้งค่า CORS/proxy เพิ่ม เพราะทุกอย่างอยู่ origin เดียวกัน
+
+```bash
+npm install
+npm run build:all      # build ทั้ง API (dist/) และเว็บ (apps/web-ui/dist/)
+npm start               # เปิด http://localhost:4000 — มีทั้ง API และหน้าเว็บ
+```
+
+ตัวแปรแวดล้อมที่ปรับได้:
+
+| ตัวแปร | ค่าเริ่มต้น | ใช้ทำอะไร |
+|---|---|---|
+| `PORT` | `4000` | พอร์ตที่ server ฟัง |
+| `DB_PATH` | `agent-office.sqlite` | path ของไฟล์ฐานข้อมูล |
+| `ALLOWED_ORIGINS` | `http://localhost:5173,http://127.0.0.1:5173` | origin ที่อนุญาตให้เรียก API แบบ cross-origin (ไม่เกี่ยวกับโหมด production พอร์ตเดียว ซึ่ง same-origin อยู่แล้ว — ใช้เมื่อรัน frontend แยกพอร์ต/โดเมน) |
+| `STATIC_DIR` | `apps/web-ui/dist` | เปลี่ยน path เว็บที่จะเสิร์ฟ, ตั้งเป็นค่าว่าง (`STATIC_DIR=`) เพื่อปิดการเสิร์ฟเว็บ (API-only) |
+
+### รันค้างไว้เบื้องหลังแบบถาวร (auto-restart, auto-start ตอนเปิดเครื่อง)
+
+บน Linux ที่มี systemd สร้างไฟล์ `/etc/systemd/system/filecub-agent-office.service`:
+
+```ini
+[Unit]
+Description=FileCub Office Agent Office
+After=network.target
+
+[Service]
+Type=simple
+WorkingDirectory=/path/to/filecub-office-agent-office
+ExecStart=/usr/bin/npm start
+Restart=on-failure
+Environment=PORT=4000
+Environment=DB_PATH=/path/to/filecub-office-agent-office/agent-office.sqlite
+
+[Install]
+WantedBy=multi-user.target
+```
+
+แล้วรัน:
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now filecub-agent-office
+sudo systemctl status filecub-agent-office   # ดูสถานะ
+journalctl -u filecub-agent-office -f        # ดู log แบบ real-time
+```
+
+ทุกครั้งที่อัปเดตโค้ด: `git pull && npm run build:all && sudo systemctl restart filecub-agent-office`
 
 ## เข้าสู่ระบบ (Login)
 

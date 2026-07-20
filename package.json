@@ -9,9 +9,12 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.json && mkdir -p dist/shared/db/migrations && cp src/shared/db/migrations/*.sql dist/shared/db/migrations/",
+    "build:web": "npm --prefix apps/web-ui install && npm --prefix apps/web-ui run build",
+    "build:all": "npm run build && npm run build:web",
     "test": "node --import tsx --test 'src/**/*.test.ts'",
     "typecheck": "tsc --noEmit -p tsconfig.json",
-    "dev:api": "tsx watch src/server/index.ts"
+    "dev:api": "tsx watch src/server/index.ts",
+    "start": "node dist/server/index.js"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
