@@ -1,7 +1,9 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { agentOfficeApi } from "./api";
 import { agentUIConfig } from "./agentUIConfig";
 import { DesktopWatchToggle } from "./DesktopWatchToggle";
+import { SearchBox } from "./SearchBox";
+import { AiAskBox } from "./AiAskBox";
 import type { ActivityLogEntry, AgentSummary } from "./types";
 
 interface AgentDetailDrawerProps {
@@ -22,20 +24,21 @@ export function AgentDetailDrawer({ agent, onClose, onRan }: AgentDetailDrawerPr
   const [feedback, setFeedback] = useState<string | null>(null);
   const config = agentUIConfig[agent.code];
 
-  useEffect(() => {
-    let cancelled = false;
+  const refreshActivity = useCallback(() => {
     agentOfficeApi
       .getActivity(agent.code, 5)
-      .then((entries) => {
-        if (!cancelled) setActivity(entries);
-      })
-      .catch(() => {
-        if (!cancelled) setActivity([]);
-      });
-    return () => {
-      cancelled = true;
-    };
+      .then(setActivity)
+      .catch(() => setActivity([]));
   }, [agent.code]);
+
+  useEffect(() => {
+    refreshActivity();
+  }, [refreshActivity]);
+
+  function handleSideEffectDone() {
+    refreshActivity();
+    onRan();
+  }
 
   useEffect(() => {
     function handleKeyDown(e: KeyboardEvent) {
@@ -52,9 +55,7 @@ export function AgentDetailDrawer({ agent, onClose, onRan }: AgentDetailDrawerPr
     try {
       const result = await agentOfficeApi.runCapability(agent.code, config.primaryCapability);
       setFeedback(result.summaryTh);
-      const entries = await agentOfficeApi.getActivity(agent.code, 5);
-      setActivity(entries);
-      onRan();
+      handleSideEffectDone();
     } catch {
       setFeedback("เกิดข้อผิดพลาด ลองใหม่อีกครั้ง");
     } finally {
@@ -99,7 +100,9 @@ export function AgentDetailDrawer({ agent, onClose, onRan }: AgentDetailDrawerPr
           </div>
         ))}
 
-        {agent.code === "upload" && <DesktopWatchToggle onChange={onRan} />}
+        {agent.code === "upload" && <DesktopWatchToggle onChange={handleSideEffectDone} />}
+        {agent.code === "search" && <SearchBox onDone={handleSideEffectDone} />}
+        {agent.code === "ai" && <AiAskBox onDone={handleSideEffectDone} />}
 
         {config.primaryCapability && (
           <button type="button" className="primary-action" onClick={handlePrimaryAction} disabled={running}>

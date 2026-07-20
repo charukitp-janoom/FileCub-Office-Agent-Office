@@ -16,10 +16,13 @@ export interface AgentUIConfig {
  */
 export const agentUIConfig: Record<AgentCode, AgentUIConfig> = {
   folder: { emoji: "🗂️" },
-  search: { emoji: "🔍", primaryCapability: "search-by-name", primaryActionLabelTh: "ลองค้นหา" },
+  // search and ai both need a real payload (query / question) the generic
+  // no-argument button can't supply — they get bespoke input boxes instead
+  // (SearchBox.tsx, AiAskBox.tsx), same pattern as upload's watch toggle.
+  search: { emoji: "🔍" },
   upload: { emoji: "☁️" },
   security: { emoji: "🛡️", primaryCapability: "activity-log", primaryActionLabelTh: "ตรวจสอบ Activity Log" },
-  ai: { emoji: "🤖", primaryCapability: "qa-about-app", primaryActionLabelTh: "ถาม Cub AI" },
+  ai: { emoji: "🤖" },
   notify: { emoji: "📧", primaryCapability: "new-file-alert", primaryActionLabelTh: "ทดสอบแจ้งเตือน" },
   backup: { emoji: "💾", primaryCapability: "auto-backup", primaryActionLabelTh: "สำรองข้อมูลตอนนี้" },
 };

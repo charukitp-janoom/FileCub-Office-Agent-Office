@@ -47,3 +47,10 @@ export interface DashboardSummary {
   filesToday: number;
   filesOrganized: number;
 }
+
+export interface SearchHit {
+  fileId: string;
+  name: string;
+  categoryNameTh: string | null;
+  snippet: string;
+}
