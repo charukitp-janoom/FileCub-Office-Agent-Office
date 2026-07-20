@@ -8,7 +8,7 @@
     "node": ">=22.5.0"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json && mkdir -p dist/shared/db/migrations && cp src/shared/db/migrations/*.sql dist/shared/db/migrations/",
+    "build": "tsc -p tsconfig.json && node scripts/copy-migrations.js",
     "build:web": "npm --prefix apps/web-ui install && npm --prefix apps/web-ui run build",
     "build:all": "npm run build && npm run build:web",
     "test": "node --import tsx --test 'src/**/*.test.ts'",
