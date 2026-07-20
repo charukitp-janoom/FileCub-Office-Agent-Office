@@ -71,6 +71,23 @@ test("role-permission: grant lets a staff user pass a permission check afterward
   void db;
 });
 
+test("a read-only grant does not satisfy a write-level check (access_level must actually be enforced)", async () => {
+  const { security, permissions } = await setup();
+
+  const grant = await security.runCapability("role-permission", {
+    action: "grant",
+    targetUserId: "staff-1",
+    resourceType: "file",
+    accessLevel: "read",
+  });
+  assert.equal(grant.success, true);
+
+  // Default requiredLevel is "write" — a "read" grant must not pass it.
+  await assert.rejects(() => permissions.check("staff-1", "file:import"));
+  // But an explicit read-level check should pass.
+  await assert.doesNotReject(() => permissions.check("staff-1", "file:view", undefined, "read"));
+});
+
 test("protect-file stops Folder Agent from re-organizing that file", async () => {
   const { db, security, upload, folder, ctxFor } = await setup();
   await upload.init(ctxFor("admin-1"));

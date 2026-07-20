@@ -19,7 +19,10 @@ export function AgentSprite({ agent, onClick, unreadCount = 0 }: AgentSpriteProp
 
   return (
     <button type="button" className="agent-sprite" onClick={() => onClick(agent)}>
-      <span className="agent-sprite__icon" aria-hidden="true">
+      <span
+        className={`agent-sprite__icon ${agent.status.state === "working" ? "agent-sprite__icon--working" : ""} ${agent.status.state === "error" ? "agent-sprite__icon--error" : ""}`}
+        aria-hidden="true"
+      >
         {config.emoji}
         {unreadCount > 0 && (
           <span className="agent-sprite__badge" aria-label={`${unreadCount} การแจ้งเตือนใหม่`}>

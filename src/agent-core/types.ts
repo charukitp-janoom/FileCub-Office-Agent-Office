@@ -55,8 +55,11 @@ export interface AgentEventBus {
   subscribe(name: AgentEventName, handler: (event: AgentEvent) => void): () => void;
 }
 
+export type AccessLevel = "read" | "write" | "admin";
+
 export interface PermissionChecker {
-  check(userId: string, action: string, resourceId?: string): Promise<void>;
+  /** `requiredLevel` defaults to "write" — the level every current call site needs. */
+  check(userId: string, action: string, resourceId?: string, requiredLevel?: AccessLevel): Promise<void>;
 }
 
 export interface AgentLogger {
