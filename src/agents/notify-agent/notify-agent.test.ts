@@ -67,6 +67,21 @@ test("backup.completed and security.anomaly map to their own notification types"
   assert.deepEqual(types, ["backup", "security"]);
 });
 
+test("achievement.unlocked creates an achievement-type notification", async () => {
+  const { notify } = await setup();
+  await notify.onEvent!({
+    name: "achievement.unlocked",
+    sourceAgent: "folder",
+    userId: "user-1",
+    payload: { achievementCode: "DESKTOP_CLEANER", achievementNameTh: "Desktop Cleaner" },
+    createdAt: new Date().toISOString(),
+  });
+
+  const [item] = notify.listNotifications();
+  assert.equal(item.type, "achievement");
+  assert.match(item.messageTh, /Desktop Cleaner/);
+});
+
 test("unrelated events (e.g. file.searched) do not create notifications", async () => {
   const { notify } = await setup();
   await notify.onEvent!({

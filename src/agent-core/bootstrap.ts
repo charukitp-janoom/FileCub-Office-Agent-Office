@@ -101,6 +101,7 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentOf
       eventBus.subscribe("security.permission_denied", (event) => void boundAgent.onEvent?.(event));
       eventBus.subscribe("backup.completed", (event) => void boundAgent.onEvent?.(event));
       eventBus.subscribe("backup.failed", (event) => void boundAgent.onEvent?.(event));
+      eventBus.subscribe("achievement.unlocked", (event) => void boundAgent.onEvent?.(event));
     }
   }
 

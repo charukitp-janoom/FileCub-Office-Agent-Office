@@ -1,0 +1,120 @@
+.level-bar {
+  background: var(--fc-bg-card);
+  border: 1px solid var(--fc-border);
+  border-radius: 14px;
+  padding: 16px 20px;
+}
+
+.level-bar__track-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--fc-text-muted);
+  margin-bottom: 8px;
+}
+
+.level-bar__step--current {
+  color: var(--fc-green);
+  font-weight: 700;
+}
+
+.level-bar__label {
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.level-bar__track {
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.level-bar__fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--fc-blue), var(--fc-green));
+  border-radius: 999px;
+  transition: width 0.3s ease;
+}
+
+.level-bar--compact {
+  padding: 6px 12px;
+  min-width: 200px;
+}
+.level-bar--compact .level-bar__label {
+  font-size: 11px;
+  margin-bottom: 4px;
+}
+.level-bar--compact .level-bar__track {
+  height: 6px;
+}
+
+.achievement-row {
+  display: flex;
+  gap: 14px;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--fc-border);
+}
+.achievement-row:last-child {
+  border-bottom: none;
+}
+
+.achievement-row__icon {
+  font-size: 28px;
+  line-height: 1;
+}
+
+.achievement-row__body {
+  flex: 1;
+}
+
+.achievement-row__title {
+  font-weight: 700;
+  font-size: 14px;
+}
+
+.achievement-row__desc {
+  font-size: 12px;
+  color: var(--fc-text-muted);
+  margin-bottom: 6px;
+}
+
+.achievement-row__track {
+  margin-bottom: 4px;
+}
+
+.achievement-row__status {
+  font-size: 11px;
+  color: var(--fc-text-muted);
+}
+
+.achievement-row__status--done {
+  color: var(--fc-green);
+}
+
+.achievement-toast {
+  position: fixed;
+  top: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--fc-blue), var(--fc-green));
+  color: white;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 14px 24px;
+  border-radius: 14px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 100;
+  animation: achievement-toast-in 0.25s ease-out;
+}
+
+@keyframes achievement-toast-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
