@@ -1,5 +1,6 @@
 import { BaseAgent } from "../../agent-core/base-agent";
 import type { AgentCapability, AgentCode, AgentRunResult } from "../../agent-core/types";
+import { PermissionDeniedError } from "../../agent-core/permission-checker";
 import type { AgentDb } from "../../shared/db/client";
 import { importFile, type FileSource } from "./scan-import.service";
 import { DesktopWatcher } from "./desktop-watcher.service";
@@ -36,6 +37,13 @@ export class UploadAgent extends BaseAgent {
 
     if (!source || !sourcePath || !this.ctx) {
       return { success: false, summaryTh: "ต้องระบุไฟล์ต้นทาง (sourcePath)" };
+    }
+
+    try {
+      await this.ctx.permissions.check(this.ctx.userId, "file:import");
+    } catch (error) {
+      if (error instanceof PermissionDeniedError) return { success: false, summaryTh: "ไม่มีสิทธิ์นำเข้าไฟล์" };
+      throw error;
     }
 
     const db = this.ctx.db.raw as AgentDb;

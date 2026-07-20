@@ -1,6 +1,6 @@
 import { randomUUID } from "node:crypto";
 import type { AgentDb } from "../shared/db/client";
-import type { PermissionChecker } from "./types";
+import type { AgentEventBus, PermissionChecker } from "./types";
 
 export class PermissionDeniedError extends Error {
   constructor(action: string) {
@@ -14,14 +14,27 @@ export class PermissionDeniedError extends Error {
  * an explicit grant in `permissions` (global, resource_id NULL, or scoped
  * to the specific resource). Every check — allow or deny — is logged to
  * security_events, matching docs/agent-office/01-architecture.md §1.5.
+ * A denial also publishes `security.permission_denied` so Cub Security
+ * Agent's anomaly detector can watch for repeated denials.
  */
 export class SqlitePermissionChecker implements PermissionChecker {
-  constructor(private readonly db: AgentDb) {}
+  constructor(
+    private readonly db: AgentDb,
+    private readonly eventBus?: AgentEventBus,
+  ) {}
 
   async check(userId: string, action: string, resourceId?: string): Promise<void> {
     const allowed = this.isAllowed(userId, action, resourceId);
     this.logSecurityEvent(userId, action, resourceId, allowed);
+
     if (!allowed) {
+      await this.eventBus?.publish({
+        name: "security.permission_denied",
+        sourceAgent: "security",
+        userId,
+        payload: { action, resourceId },
+        createdAt: new Date().toISOString(),
+      });
       throw new PermissionDeniedError(action);
     }
   }
