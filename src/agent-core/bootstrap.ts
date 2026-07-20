@@ -22,6 +22,8 @@ export interface BootstrapDeps {
   userId: string;
   /** SQLite file path, or ":memory:" for tests. Defaults to a local file next to the app. */
   dbPath?: string;
+  /** Directory backup file copies are written to. Defaults to ./backups. */
+  backupDir?: string;
 }
 
 export interface AgentOffice {
@@ -53,7 +55,7 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentOf
   const achievementEngine = new AchievementEngine(db, activityLogWriter);
   achievementEngine.attach(eventBus);
 
-  const permissions = new SqlitePermissionChecker(db);
+  const permissions = new SqlitePermissionChecker(db, eventBus);
 
   const agents = [
     new FolderAgent(),
@@ -62,7 +64,7 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentOf
     new SecurityAgent(),
     new AiAgent(),
     new NotifyAgent(),
-    new BackupAgent(),
+    new BackupAgent(deps.backupDir ?? "./backups"),
   ];
 
   seedAgents(db, agents);
@@ -89,6 +91,7 @@ export async function bootstrapAgentOffice(deps: BootstrapDeps): Promise<AgentOf
       eventBus.subscribe("file.imported", (event) => void boundAgent.onEvent?.(event));
       eventBus.subscribe("file.organized", (event) => void boundAgent.onEvent?.(event));
       eventBus.subscribe("security.anomaly", (event) => void boundAgent.onEvent?.(event));
+      eventBus.subscribe("security.permission_denied", (event) => void boundAgent.onEvent?.(event));
       eventBus.subscribe("backup.completed", (event) => void boundAgent.onEvent?.(event));
       eventBus.subscribe("backup.failed", (event) => void boundAgent.onEvent?.(event));
     }

@@ -26,6 +26,11 @@ export function getCategory(db: AgentDb, categoryId: string): CategoryRow | unde
     | undefined;
 }
 
+/** True if Cub Security Agent has flagged this file as protected — Folder Agent must not re-file it automatically. */
+export function isProtected(db: AgentDb, fileId: string): boolean {
+  return Boolean(db.prepare("SELECT 1 FROM protected_files WHERE file_id = ?").get(fileId));
+}
+
 export function organizeFile(db: AgentDb, fileId: string, categoryId: string): void {
   db.prepare(`
     UPDATE files

@@ -1,8 +1,9 @@
 import { BaseAgent } from "../../agent-core/base-agent";
 import type { AgentCapability, AgentCode, AgentEvent, AgentRunResult } from "../../agent-core/types";
+import { PermissionDeniedError } from "../../agent-core/permission-checker";
 import type { AgentDb } from "../../shared/db/client";
 import { matchCategory } from "./rules-engine";
-import { getCategory, getFile, organizeFile } from "./folder-agent.repository";
+import { getCategory, getFile, isProtected, organizeFile } from "./folder-agent.repository";
 
 export interface OrganizePayload {
   fileId: string;
@@ -47,6 +48,19 @@ export class FolderAgent extends BaseAgent {
     if (!file) {
       this.setStatus({ state: "idle" });
       return { success: false, summaryTh: "ไม่พบไฟล์ที่ระบุ" };
+    }
+
+    if (isProtected(db, fileId)) {
+      this.setStatus({ state: "idle" });
+      return { success: false, summaryTh: `ไฟล์ "${file.name}" ถูกป้องกันไว้ ไม่จัดหมวดหมู่ให้อัตโนมัติ` };
+    }
+
+    try {
+      await this.ctx.permissions.check(this.ctx.userId, "file:organize", fileId);
+    } catch (error) {
+      this.setStatus({ state: "idle" });
+      if (error instanceof PermissionDeniedError) return { success: false, summaryTh: "ไม่มีสิทธิ์จัดหมวดหมู่ไฟล์นี้" };
+      throw error;
     }
 
     const categoryId = matchCategory(db, file.name);
