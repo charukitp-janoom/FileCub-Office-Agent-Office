@@ -2,8 +2,10 @@ import { useState } from "react";
 import { useAgentRegistry } from "./useAgentRegistry";
 import { useDashboardSummary } from "./useDashboardSummary";
 import { useUnreadNotifications } from "./useUnreadNotifications";
+import { useUserLevel } from "./useUserLevel";
 import { AgentSprite } from "./AgentSprite";
 import { AgentDetailDrawer } from "./AgentDetailDrawer";
+import { LevelProgressBar } from "../achievement/LevelProgressBar";
 import type { AgentSummary } from "./types";
 import "./agent-office.css";
 
@@ -13,17 +15,23 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
 }
 
+interface AgentOfficeRoomProps {
+  onOpenAchievements: () => void;
+}
+
 /** Top-level screen for the "🤖 Agent Office" menu (docs/agent-office/03-ui-flow.md §3.2). */
-export function AgentOfficeRoom() {
+export function AgentOfficeRoom({ onOpenAchievements }: AgentOfficeRoomProps) {
   const { agents, loading, error, refresh } = useAgentRegistry();
   const { summary, refresh: refreshDashboard } = useDashboardSummary();
   const { count: unreadCount, refresh: refreshUnread } = useUnreadNotifications();
+  const { level, refresh: refreshLevel } = useUserLevel();
   const [selected, setSelected] = useState<AgentSummary | null>(null);
 
   function handleAgentRan() {
     refresh();
     refreshDashboard();
     refreshUnread();
+    refreshLevel();
   }
 
   return (
@@ -32,7 +40,13 @@ export function AgentOfficeRoom() {
         <h1>
           🤖 Agent Office <span style={{ color: "var(--fc-text-muted)", fontWeight: 400, fontSize: 13 }}>— FileCub Office</span>
         </h1>
-        <span className="coin">🪙 2,560</span>
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <LevelProgressBar level={level} compact />
+          <button type="button" className="primary-action" style={{ width: "auto", margin: 0 }} onClick={onOpenAchievements}>
+            🏆 Achievement
+          </button>
+          <span className="coin">🪙 2,560</span>
+        </div>
       </div>
 
       <div className="dashboard-tiles">

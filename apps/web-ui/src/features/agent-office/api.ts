@@ -1,10 +1,12 @@
 import type {
+  Achievement,
   ActivityLogEntry,
   AgentRunResult,
   AgentSummary,
   DashboardSummary,
   DashboardTrendPoint,
   NotificationItem,
+  UserLevel,
   WatchStatus,
 } from "./types";
 
@@ -36,4 +38,6 @@ export const agentOfficeApi = {
     fetch(`/api/notifications${unreadOnly ? "?unread=true" : ""}`).then((r) => json<NotificationItem[]>(r)),
   markNotificationRead: (id: string) => fetch(`/api/notifications/${id}/read`, { method: "POST" }).then((r) => json(r)),
   markAllNotificationsRead: () => fetch("/api/notifications/read-all", { method: "POST" }).then((r) => json(r)),
+  getAchievements: () => fetch("/api/achievements").then((r) => json<Achievement[]>(r)),
+  getUserLevel: () => fetch("/api/levels/me").then((r) => json<UserLevel>(r)),
 };

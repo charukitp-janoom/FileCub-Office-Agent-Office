@@ -30,6 +30,11 @@ const EVENT_TEMPLATES: Partial<Record<AgentEventName, NotificationTemplate>> = {
     titleTh: "สำรองข้อมูลล้มเหลว",
     messageTh: () => "การสำรองข้อมูลล้มเหลว กรุณาตรวจสอบพื้นที่จัดเก็บ",
   },
+  "achievement.unlocked": {
+    type: "achievement",
+    titleTh: "ปลดล็อกความสำเร็จใหม่!",
+    messageTh: (p) => `คุณปลดล็อก "${p.achievementNameTh ?? ""}" แล้ว`,
+  },
 };
 
 export class NotifyAgent extends BaseAgent {

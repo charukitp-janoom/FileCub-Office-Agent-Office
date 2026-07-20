@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type { AgentDb } from "../../shared/db/client";
 
-export type NotificationType = "task" | "new_file" | "important_doc" | "license" | "update" | "security" | "backup";
+export type NotificationType = "task" | "new_file" | "important_doc" | "license" | "update" | "security" | "backup" | "achievement";
 
 export interface NotificationRow {
   id: string;

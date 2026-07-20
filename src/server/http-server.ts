@@ -3,6 +3,7 @@ import type { AgentOffice } from "../agent-core/bootstrap";
 import type { AgentCode } from "../agent-core/types";
 import type { UploadAgent } from "../agents/upload-agent/upload-agent";
 import type { NotifyAgent } from "../agents/notify-agent/notify-agent";
+import { listAchievementsWithProgress, getUserLevel } from "../shared/db/achievement.repository";
 
 interface AgentSummary {
   code: AgentCode;
@@ -145,6 +146,14 @@ export function createHttpServer(office: AgentOffice, options: HttpServerOptions
           await notify.runCapability("mark-all-read");
           return send(res, 200, { success: true });
         }
+      }
+
+      if (req.method === "GET" && parts[0] === "api" && parts[1] === "achievements" && parts.length === 2) {
+        return send(res, 200, listAchievementsWithProgress(office.db, office.userId));
+      }
+
+      if (req.method === "GET" && parts[0] === "api" && parts[1] === "levels" && parts[2] === "me") {
+        return send(res, 200, getUserLevel(office.db, office.userId));
       }
 
       send(res, 404, { error: "not found" });

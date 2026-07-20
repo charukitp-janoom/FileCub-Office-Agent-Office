@@ -70,3 +70,20 @@ export interface NotificationItem {
   isRead: boolean;
   createdAt: string;
 }
+
+export interface Achievement {
+  code: string;
+  nameTh: string;
+  descriptionTh: string;
+  iconKey: string;
+  progress: number;
+  criteriaCount: number;
+  unlocked: boolean;
+  unlockedAt: string | null;
+}
+
+export interface UserLevel {
+  levelName: string;
+  currentExp: number;
+  nextLevelExp: number;
+}
