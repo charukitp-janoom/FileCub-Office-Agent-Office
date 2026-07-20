@@ -7,6 +7,7 @@ import { listAchievementsWithProgress, getUserLevel } from "../shared/db/achieve
 import { isPasswordConfigured, setInitialPassword, login, logout, authenticate } from "../agent-core/auth/auth.service";
 import { isRateLimited, recordFailure, recordSuccess } from "../agent-core/auth/login-rate-limit";
 import { readSessionToken, setSessionCookie, clearSessionCookie } from "./cookies";
+import { serveStatic } from "./static-files";
 
 interface AgentSummary {
   code: AgentCode;
@@ -88,6 +89,8 @@ async function readJsonBody(req: IncomingMessage): Promise<unknown> {
 export interface HttpServerOptions {
   /** Used when a watch request omits `path` — the demo desktop folder. */
   defaultWatchPath?: string;
+  /** apps/web-ui/dist — when set, serves the built SPA from this same origin/port. Production only; dev uses the Vite dev server + proxy instead. */
+  staticDir?: string;
 }
 
 // Every other /api/* route requires a valid session — these are the only
@@ -109,6 +112,16 @@ export function createHttpServer(office: AgentOffice, options: HttpServerOptions
     const parts = url.pathname.split("/").filter(Boolean); // ["api", "agents", ...]
 
     try {
+      // Static assets (the built SPA, including the login page itself) are
+      // never behind the session check — a logged-out browser still needs
+      // to load the JS that shows the login screen in the first place.
+      if (parts[0] !== "api") {
+        if (req.method === "GET" && options.staticDir && (await serveStatic(options.staticDir, url.pathname, res))) {
+          return;
+        }
+        return send(404, { error: "not found" });
+      }
+
       if (parts[0] === "api" && parts[1] === "auth") {
         return await handleAuth(office, req, parts.slice(2), send);
       }
